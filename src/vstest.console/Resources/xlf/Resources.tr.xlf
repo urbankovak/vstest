@@ -47,15 +47,6 @@
         </alt-trans>
         <note from="bb-metadata">fuzzyMatch="15" wordcount="7" adjWordcount="5.95" curWordcount="5.95"</note>
       </trans-unit>
-      <trans-unit id="AvailableExtensionFormat">
-        <source>    {0}</source>
-        <target state="new">    {0}</target>
-        <note>{Locked}</note>
-        <alt-trans match-quality="100%" tool="BlackBox/MSR MT">
-          <target state-qualifier="mt-suggestion">{0}</target>
-        </alt-trans>
-        <note from="bb-metadata">fuzzyMatch="15" wordcount="1" adjWordcount="0.85" curWordcount="0.85"</note>
-      </trans-unit>
       <trans-unit id="AvailableExtensionsMetadataFormat">
         <source>        {0}: {1}</source>
         <target state="translated">        {0}: {1}</target>
@@ -73,15 +64,6 @@
           <target state-qualifier="mt-suggestion">Die folgende Tests Protokollierung Add-Ins sind verfügbar:</target>
         </alt-trans>
         <note from="bb-metadata">fuzzyMatch="15" wordcount="7" adjWordcount="5.95" curWordcount="5.95"</note>
-      </trans-unit>
-      <trans-unit id="AvailableTestsFormat">
-        <source>    {0}</source>
-        <target state="new">    {0}</target>
-        <note>{Locked}</note>
-        <alt-trans match-quality="100%" tool="BlackBox/MSR MT">
-          <target state-qualifier="mt-suggestion">{0}</target>
-        </alt-trans>
-        <note from="bb-metadata">fuzzyMatch="15" wordcount="1" adjWordcount="0.25" curWordcount="0.25"</note>
       </trans-unit>
       <trans-unit id="CommandLineError">
         <source>Error: {0}</source>
