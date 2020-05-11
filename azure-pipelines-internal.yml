@@ -22,8 +22,12 @@ pool:
 #Your build pipeline references an undefined variable named ‘BuildVersionSuffix’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
 #Your build pipeline references an undefined variable named ‘SystemRoot’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
 variables:
-  BuildConfiguration: 'release'
-  BuildTargetRuntime: 'win7-x64'
+  - group: 'DotNet-Maestro'
+  - group: 'DotNet-Blob-Feed'
+  - name: 'BuildConfiguration'
+    value: 'release'
+  - name: 'BuildTargetRuntime'
+    value: 'win7-x64'
 
 steps:
 - task: ms-vseng.MicroBuildTasks.30666190-6959-11e5-9f96-f56098202fef.MicroBuildSigningPlugin@1
