@@ -1,0 +1,210 @@
+pool:
+  name: VSEng-MicroBuildVS2019
+  demands:
+  - DotNetFramework
+  - Cmd
+  - msbuild
+  - visualstudio
+
+#Your build pipeline references the ‘VSTestRTMBuild’ variable, which you’ve selected to be settable at queue time. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab, and then select the option to make it settable at queue time. See https://go.microsoft.com/fwlink/?linkid=865971
+#Your build pipeline references an undefined variable named ‘BuildVersionPrefix’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘BuildVersionSuffix’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘SystemRoot’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘PackageVersion’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘PackageVersion’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘JsonNetVersion’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘FakesPackageDir’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘MaestroAccessToken’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘BARBuildId’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘BARBuildId’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘MaestroAccessToken’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘BuildVersionSuffix’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘BuildVersionSuffix’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+#Your build pipeline references an undefined variable named ‘SystemRoot’. Create or edit the build pipeline for this YAML file, define the variable on the Variables tab. See https://go.microsoft.com/fwlink/?linkid=865972
+variables:
+  BuildConfiguration: 'release'
+  BuildTargetRuntime: 'win7-x64'
+
+steps:
+- task: ms-vseng.MicroBuildTasks.30666190-6959-11e5-9f96-f56098202fef.MicroBuildSigningPlugin@1
+  displayName: 'Install Signing Plugin'
+  inputs:
+    signType: real
+
+- task: ms-vseng.MicroBuildTasks.32f78468-e895-4f47-962c-58a699361df8.MicroBuildSwixPlugin@1
+  displayName: 'Install Swix Plugin'
+
+- task: PowerShell@1
+  displayName: 'Set Build Number and inter task variables'
+  inputs:
+    scriptName: 'scripts/vsts-prebuild.ps1'
+    arguments: '"preview-$(Build.BuildNumber)" "$(VSTestRTMBuild)"'
+
+- task: BatchScript@1
+  displayName: 'Run script build.cmd'
+  inputs:
+    filename: build.cmd
+    arguments: '-verbose -configuration $(BuildConfiguration) -version $(BuildVersionPrefix) -versionsuffix ''$(BuildVersionSuffix)'' -targetruntime $(BuildTargetRuntime) -buildnumber $(Build.BuildNumber) -pt'
+    modifyEnvironment: false
+    failOnStandardError: true
+
+- task: CmdLine@1
+  displayName: 'Delete stale pdb files'
+  inputs:
+    filename: del
+    arguments: '/S /F *.pdb'
+    workingFolder: '$(SystemRoot)'
+  continueOnError: true
+  condition: always()
+
+- task: BatchScript@1
+  displayName: 'Run Unit tests'
+  inputs:
+    filename: test.cmd
+    arguments: '-verbose -configuration $(BuildConfiguration)'
+    modifyEnvironment: false
+    failOnStandardError: true
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results **\*.trx'
+  inputs:
+    testResultsFormat: VSTest
+    testResultsFiles: '**\*.trx'
+  condition: succeededOrFailed()
+
+- task: MSBuild@1
+  displayName: 'Sign assemblies'
+  inputs:
+    solution: src/package/sign/sign.proj
+    msbuildVersion: 14.0
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+    msbuildArguments: '/p:IncludeLegacyComponents=true /p:TargetRuntime=$(BuildTargetRuntime)'
+    createLogFile: true
+
+- task: NuGetPackager@0
+  displayName: 'Package: TestPlatform SDK'
+  inputs:
+    searchPattern: 'artifacts/$(BuildConfiguration)/*.nuspec'
+    outputdir: 'artifacts/$(BuildConfiguration)/packages'
+    nuGetAdditionalArgs: '-Version $(PackageVersion) -Properties Version=$(PackageVersion);JsonNetVersion=$(JsonNetVersion);Runtime=$(BuildTargetRuntime);NetCoreTargetFramework=netcoreapp2.1;FakesPackageDir=$(FakesPackageDir)'
+    nuGetPath: '$(Build.SourcesDirectory)\packages\Nuget.CommandLine\3.4.3\tools\NuGet.exe'
+
+- task: VSBuild@1
+  displayName: 'Build vsix project to create vsix package'
+  inputs:
+    solution: 'artifacts/$(BuildConfiguration)/VSIX/TestPlatform.csproj'
+    vsVersion: 15.0
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+
+- task: MSBuild@1
+  displayName: 'Sign Vsix and Nuget packages'
+  inputs:
+    solution: src/package/sign/sign.proj
+    msbuildVersion: 14.0
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+    msbuildArguments: '/t:SignVsix /t:SignNugetPackages'
+    createLogFile: true
+
+- task: PowerShell@1
+  displayName: 'Verify signing of assemblies and nuget packages'
+  inputs:
+    scriptName: 'scripts/verify-sign.ps1'
+    arguments: '-verbose -configuration $(BuildConfiguration) -Certificate 711AF71DC4C4952C8ED65BB4BA06826ED3922A32'
+
+- task: PowerShell@2
+  displayName: 'Publish manifest to BAR'
+  inputs:
+    targetType: filePath
+    filePath: './eng\common\sdk-task.ps1'
+    arguments: '-task PublishBuildAssets -restore -msbuildEngine dotnet /p:ManifestsPath=$(Build.Repository.LocalPath)\artifacts\$(BuildConfiguration)\packages\manifest /p:BuildAssetRegistryToken=$(MaestroAccessToken) /p:MaestroApiEndpoint=https://maestro-prod.westus2.cloudapp.azure.com /p:Configuration=$(BuildConfiguration)'
+
+- powershell: |
+   # temporary solution before we move this whole thing to proper arcade
+   # because the previous step publishes to BAR and that is not working correctly anymore, we need to 
+   # promote the build after it is done
+   
+   if (${env:BUILD_SOURCEBRANCHNAME} -notin "master", "blame-datacollector") {
+       Write-Host "this branch is not master or blame-datacollector, returning" 
+       return
+   }
+   
+   
+   . eng\common\tools.ps1
+   $dotnetRoot = InitializeDotNetCli -install:$true
+   $DarcExe = "$dotnetRoot\tools"
+   Create-Directory $DarcExe
+   $DarcExe = Resolve-Path $DarcExe
+   . eng\common\darc-init.ps1 -toolpath $DarcExe
+   
+   $Env:dotnet_root = $dotnetRoot
+   & $DarcExe\darc.exe add-build-to-channel --id $(BARBuildId) --channel ".net core tooling dev" --password $(MaestroAccessToken) --skip-assets-publishing
+   
+  displayName: 'Promote build in darc'
+
+- task: VSBuild@1
+  displayName: 'Build solution src\package\VSmanproj\Microsoft.VisualStudio.TestTools.TestPlatform.V2.CLI.vsmanproj'
+  inputs:
+    solution: 'src\package\VSmanproj\Microsoft.VisualStudio.TestTools.TestPlatform.V2.CLI.vsmanproj'
+    vsVersion: 15.0
+    msbuildArgs: '/p:TargetExt=.vsman'
+    platform: '$(BuildPlatform)'
+    configuration: '$(BuildConfiguration)'
+
+- task: ms-vseng.MicroBuildTasks.4305a8de-ba66-4d8b-b2d1-0dc4ecbbf5e8.MicroBuildUploadVstsDropFolder@1
+  displayName: 'Upload V3 VSIX to VSTS Drop'
+  inputs:
+    DropFolder: 'artifacts\$(BuildConfiguration)\VSIX'
+    DropServiceUri: 'https://devdiv.artifacts.visualstudio.com/DefaultCollection'
+
+- task: NuGetCommand@2
+  displayName: 'Publish: TestPlatform SDK'
+  inputs:
+    command: push
+    packagesToPush: 'artifacts/$(BuildConfiguration)/packages/*$(BuildVersionSuffix).nupkg'
+    nuGetFeedType: external
+    publishFeedCredentials: 'VSTest MyGet'
+  continueOnError: true
+
+- task: NuGetAuthenticate@0
+  displayName: 'Authenticate with dotnet-tools feed'
+  inputs:
+    nuGetServiceConnections: 'dnceng-dotnet-tools-feed'
+    forceReinstallCredentialProvider: true
+  continueOnError: true
+
+- task: NuGetCommand@2
+  displayName: 'Nuget push to dotnet-tools feed'
+  inputs:
+    command: push
+    packagesToPush: 'artifacts/$(BuildConfiguration)/packages/*$(BuildVersionSuffix).nupkg'
+    nuGetFeedType: external
+    publishFeedCredentials: 'dnceng-dotnet-tools-feed'
+  continueOnError: true
+
+- task: CopyPublishBuildArtifacts@1
+  displayName: 'Copy Publish Artifact: TestPlatform'
+  inputs:
+    Contents: 'artifacts/!(obj)'
+    ArtifactName: TestPlatform
+    ArtifactType: Container
+  condition: succeededOrFailed()
+
+- task: PowerShell@1
+  displayName: 'Portable to Full Pdb conversion'
+  inputs:
+    scriptName: scripts/PortableToFullPdb.ps1
+    arguments: '-verbose -configuration $(BuildConfiguration)'
+
+#Task group has not been exported, task groups are not supported yet
+
+- task: CmdLine@1
+  displayName: 'Delete stale pdb files'
+  inputs:
+    filename: del
+    arguments: '/S /F *.pdb'
+    workingFolder: '$(SystemRoot)'
+  continueOnError: true
+  condition: always()
