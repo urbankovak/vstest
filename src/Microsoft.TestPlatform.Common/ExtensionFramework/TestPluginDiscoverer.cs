@@ -233,7 +233,7 @@ namespace Microsoft.VisualStudio.TestPlatform.Common.ExtensionFramework
             {
                 var rawPluginInfo = Activator.CreateInstance(typeof(TPluginInfo), type);
                 var pluginInfo = (TPluginInfo)rawPluginInfo;
-
+                 
                 if (pluginInfo == null || pluginInfo.IdentifierData == null)
                 {
                     if (EqtTrace.IsErrorEnabled)
