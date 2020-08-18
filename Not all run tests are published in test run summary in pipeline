@@ -1,0 +1,11 @@
+Dear Sir/Madam, we have a problem with publishing test results. Some of them are missing in trx file. We use Visual Studio Test task for running UI tests in the TFS Release Pipeline.
+
+I asked Azure DevOps team for help, but they recommended me to ask you. According to their findings the issue is in the trx where for the missing tests is a warning which is result it not being present in the trx. Please see the link to the Azure DevOps team answer below.
+
+https://developercommunity.visualstudio.com/comments/1146832/view.html
+
+Would you be so kind to explore the issue and let me know where the problem is?
+If you need any other information, please let me know.
+
+Thank you in advance
+Katerina Urbankova
